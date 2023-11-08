@@ -1,9 +1,14 @@
+# This bash script is a toolchain for compiling and running assembly programs on x86 or x86-64 systems. It supports various options to control the compilation and execution process, and it uses the NASM assembler and the ld linker to compile the assembly code. The script can run the executable in the QEMU emulator or the GDB debugger, depending on the provided options.
+
 #! /bin/bash
+
+# This line specifies the interpreter to use, in this case, it's set to use the Bash shell.
 
 # Created by Lubos Kuzma
 # ISS Program, SADT, SAIT
 # August 2022
 
+# This condition checks if the number of command-line arguments (specified using $#) is less than 1. If there are not enough arguments, it proceeds to display usage information and exits the script.
 
 if [ $# -lt 1 ]; then
 	echo "Usage:"
@@ -21,67 +26,77 @@ if [ $# -lt 1 ]; then
 	exit 1
 fi
 
-POSITIONAL_ARGS=()
-GDB=False
-OUTPUT_FILE=""
-VERBOSE=False
-BITS=False
-QEMU=False
-BREAK="_start"
-RUN=False
-while [[ $# -gt 0 ]]; do
-	case $1 in
-		-g|--gdb)
+# This part of the code processes command-line arguments using a while loop and a case statement to set various flags and values based on the provided options.
+
+POSITIONAL_ARGS=() # An array to store non-option arguments (e.g., the assembly filename).
+GDB=False # A flag to indicate whether to run the GDB debugger or not.
+OUTPUT_FILE="" # A variable to store the output file name.
+VERBOSE=False # A flag to indicate whether to show verbose output or not.
+BITS=False # A flag to indicate whether to compile for 64-bit or 32-bit architecture.
+QEMU=False # A flag to indicate whether to run the QEMU emulator or not.
+BREAK="_start" # A variable to store the breakpoint for the GDB debugger.
+RUN=False # A flag to indicate whether to run the program in the GDB debugger automatically or not.
+while [[ $# -gt 0 ]]; do # A loop to iterate over the command-line arguments.
+	case $1 in # A case statement to match the argument with the corresponding option.
+		-g|--gdb) # If the argument is -g or --gdb, set the GDB flag to True.
 			GDB=True
 			shift # past argument
 			;;
-		-o|--output)
+		-o|--output) # If the argument is -o or --output, set the output file name to the next argument.
 			OUTPUT_FILE="$2"
 			shift # past argument
 			shift # past value
 			;;
-		-v|--verbose)
+		-v|--verbose) # If the argument is -v or --verbose, set the verbose flag to True.
 			VERBOSE=True
 			shift # past argument
 			;;
-		-64|--x84-64)
+		-64|--x84-64) # If the argument is -64 or --x84-64, set the BITS flag to True.
 			BITS=True
 			shift # past argument
 			;;
-		-q|--qemu)
+		-q|--qemu) # If the argument is -q or --qemu, set the QEMU flag to True.
 			QEMU=True
 			shift # past argument
 			;;
-		-r|--run)
+		-r|--run) # If the argument is -r or --run, set the RUN flag to True.
 			RUN=True
 			shift # past argument
 			;;
-		-b|--break)
+		-b|--break) # If the argument is -b or --break, set the breakpoint to the next argument.
 			BREAK="$2"
 			shift # past argument
 			shift # past value
 			;;
-		-*|--*)
+		-*|--*) # If the argument is any other option, display an error message and exit.
 			echo "Unknown option $1"
 			exit 1
 			;;
-		*)
+		*) # If the argument is not an option, add it to the positional arguments array.
 			POSITIONAL_ARGS+=("$1") # save positional arg
 			shift # past argument
 			;;
 	esac
 done
 
+# This line restores the positional parameters from the array.
+
 set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
+# This condition checks if the specified assembly file exists. If not, it displays an error message and exits.
 
 if [[ ! -f $1 ]]; then
 	echo "Specified file does not exist"
 	exit 1
 fi
 
+# This condition checks if the output file name is not provided. If not, it is derived from the assembly file name by removing the extension.
+
 if [ "$OUTPUT_FILE" == "" ]; then
 	OUTPUT_FILE=${1%.*}
 fi
+
+# This condition checks if the verbose flag is set. If yes, it provides information about the script's progress.
 
 if [ "$VERBOSE" == "True" ]; then
 	echo "Arguments being set:"
@@ -99,6 +114,8 @@ if [ "$VERBOSE" == "True" ]; then
 
 fi
 
+# This condition checks if the BITS flag is set. If yes, it assembles the provided assembly file using NASM for 64-bit architecture. If no, it assembles the file for 32-bit architecture.
+
 if [ "$BITS" == "True" ]; then
 
 	nasm -f elf64 $1 -o $OUTPUT_FILE.o && echo ""
@@ -110,6 +127,8 @@ elif [ "$BITS" == "False" ]; then
 
 fi
 
+# This condition checks if the verbose flag is set. If yes, it prints a message indicating that the assembly is finished and the linking is started.
+
 if [ "$VERBOSE" == "True" ]; then
 
 	echo "NASM finished"
@@ -117,11 +136,7 @@ if [ "$VERBOSE" == "True" ]; then
 	
 fi
 
-if [ "$VERBOSE" == "True" ]; then
-
-	echo "NASM finished"
-	echo "Linking ..."
-fi
+# This condition checks if the BITS flag is set. If yes, it links the assembly output file to create an executable for 64-bit architecture. If no, it links the file for 32-bit architecture.
 
 if [ "$BITS" == "True" ]; then
 
@@ -134,12 +149,15 @@ elif [ "$BITS" == "False" ]; then
 
 fi
 
+# This condition checks if the verbose flag is set. If yes, it prints a message indicating that the linking is finished.
 
 if [ "$VERBOSE" == "True" ]; then
 
 	echo "Linking finished"
 
 fi
+
+# This condition checks if the QEMU flag is set. If yes, it runs the executable in the QEMU emulator. The choice of QEMU command depends on the BITS flag. It then exits the script.
 
 if [ "$QEMU" == "True" ]; then
 
@@ -159,6 +177,8 @@ if [ "$QEMU" == "True" ]; then
 	exit 0
 	
 fi
+
+# This condition checks if the GDB flag is set. If yes, it sets up GDB parameters, such as breakpoints and program execution, and then starts the GDB debugger with the executable.
 
 if [ "$GDB" == "True" ]; then
 
